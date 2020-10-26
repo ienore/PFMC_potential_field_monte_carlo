@@ -7,7 +7,8 @@ function sum_NN_m = get_m_th_NN(Sigma,NumInEdge,site_index,time_index,m)
         for y_index = 1:1:NumInEdge
             delta_y = min([abs(y_index-y),NumInEdge-abs(y_index-y)]);
             if delta_x + delta_y == m
-                sum_NN_m = sum_NN_m + Slice(x_index,y_index);
+                index = CoorToIndex(x_index,y_index,NumInEdge);
+                sum_NN_m = sum_NN_m + Slice(index);
             end
         end
     end       

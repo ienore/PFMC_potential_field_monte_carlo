@@ -1,7 +1,7 @@
 %% Set up Parameters
 zjy_index = 1;
 T_hop = 1.0;
-NumInEdge = 8;
+NumInEdge = 4;
 NumOfVertexs = NumInEdge^2;
 K = Get_K(NumInEdge);
 
@@ -105,15 +105,15 @@ end
 
 
 %% Deal with the data
-factor_list = rand([TempSlice*MAX_NN,1]);
-N_try = 1e5;
+factor_list = rand([TempSlice,1]);
+N_try = 1e4;
 step = 0.1;
 r2_old = 0;
 for try_index = 1:1:N_try
     if mod(try_index,N_try/100)==0
         fprintf("Try_ratio = %f\n",try_index/N_try);
     end
-    site_change = randi([1,TempSlice*MAX_NN]);
+    site_change = randi([1,TempSlice]);
     factor_list_new = factor_list;
     factor_list_new(site_change) = factor_list_new(site_change) + step * (rand-0.5);
     new_factor = mc_NN * factor_list_new;

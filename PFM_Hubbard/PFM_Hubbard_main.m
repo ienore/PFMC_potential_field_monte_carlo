@@ -1,8 +1,7 @@
-
-%fprintf("FINAL_RUN:%d\n",FINAL_RUN);
+%% Set up Parameters
 zjy_index = 1;
 T_hop = 1.0;
-NumInEdge = 8;
+NumInEdge = 4;
 NumOfVertexs = NumInEdge^2;
 K = Get_K(NumInEdge);
 
@@ -19,17 +18,21 @@ Sigma = double(rand([TempSlice,NumOfVertexs])>0.5)*2.0-1.0;%RandomInit
 N_wrap = 10;
 N_cut = 5.0;
 id_mat = eye(NumOfVertexs);
-
+%% Prepare Matrixs
 mea_x = 1;
 mea_y = 1;
 mea_result = zeros([1,TempSlice*NumOfEpoch*2]);
 mea_result_auxi = zeros([1,(TempSlice-1)*NumOfEpoch*2]);
-mea_result_auxi_new = zeros([1,(TempSlice-1)*NumOfEpoch*2]);
-mea_result_propa = zeros([TempSlice,2*(TempSlice-1)*NumOfEpoch*NumOfVertexs]);
+mc_potential = zeros([1,(TempSlice-1)*NumOfEpoch*2*NumOfVertexs]);
+mc_NN = zeros([1,(TempSlice-1)*NumOfEpoch*2*NumOfVertexs]);
 count_list = zeros([1,TempSlice])+1;
 count = 1.0;
 count_new = 1;
-WarmUp(zjy_index,N_wrap,Sigma,id_mat,NumInEdge,NumOfWarm,NumOfEpoch,K,TempSlice,NumOfVertexs,Miu,Uene,D_Tau,lambda,T_hop);
+
+%% Warming up
+Sigma = WarmUp(zjy_index,N_wrap,Sigma,id_mat,NumInEdge,NumOfWarm,NumOfEpoch,K,TempSlice,NumOfVertexs,Miu,Uene,D_Tau,lambda,T_hop);
+
+%% MC Measuring
 for epoch_index = 1:1:NumOfEpoch
     if mod(zjy_index,8) == 1 && mod(epoch_index,NumOfEpoch/1000)==0
         fprintf("D_Tau = %f,MC_Ratio = %f\n",D_Tau,epoch_index/NumOfEpoch);
@@ -63,35 +66,10 @@ for epoch_index = 1:1:NumOfEpoch
             green_L_down = B_trans_inv_down*green_L_down*B_trans_down;
             end
         end
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MEASURE ?? %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        green_up = green_L_up;
-        green_down = green_L_down;
-        green_up_c = id_mat - transpose(green_L_up);
-        green_down_c = id_mat - transpose(green_L_down);
-        for site_index_auxi = 1:1:NumOfVertexs
-            mea_result_auxi(count) = green_down_c(1,1)+green_up_c(1,1);
-            count = count + 1;
-        end
-        t_start = 0;
-        B_propa = eye(NumOfVertexs);
-        for propa_time_index = 1:1:TempSlice
-            if mod(propa_time_index,N_wrap) == 1 || propa_time_index == 1
-                G_propa = Get_G_L2(1,propa_time_index,NumOfVertexs,Sigma,D_Tau,lambda,TempSlice,K,T_hop,Miu,Uene);
-            else
-                B_propa = Get_B_L(1,propa_time_index,NumOfVertexs,Sigma,D_Tau,lambda,TempSlice,K,T_hop,Miu,Uene);
-                G_propa = B_propa * G_propa;
-            end
-            
-           %B_propa = Get_B_L(1,propa_time_index,NumOfVertexs,Sigma,D_Tau,lambda,TempSlice,K,T_hop,Miu,Uene);
-           %G_propa = B_propa * G_propa;
-
-           for site_index = 1:1:NumOfVertexs
-                mea_result_propa(propa_time_index,count_list(propa_time_index)) = G_propa(site_index,site_index);
-                count_list(propa_time_index) = count_list(propa_time_index) + 1;
-           end
-        end
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MEASURE (Run :(TempSlice-1)*NumOfEpoch*2) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+       	
        
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MEASURE ?? %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MEASURE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         for site_index = 1:1:NumOfVertexs
             delta_up = zeros(NumOfVertexs);
             delta_up(site_index,site_index) = exp(-2*lambda*Sigma(time_index,site_index))-1;
@@ -100,6 +78,11 @@ for epoch_index = 1:1:NumOfEpoch
             R_up = 1 + delta_up(site_index,site_index)*(1-green_L_up(site_index,site_index));
             R_down = 1 + delta_down(site_index,site_index)*(1-green_L_down(site_index,site_index));
             PosToChange = R_up*R_down;
+            %%% Load Data
+            mc_potential(count) = log(PosToChange)/Sigma(time_index,site_index);
+            mc_NN(count) = 1;
+            count = count +1;
+            %%% Finished Data
             if rand < PosToChange
                 Sigma(time_index,site_index) = -Sigma(time_index,site_index);
                 green_L_up = green_L_up - 1.0/R_up * green_L_up * delta_up * (id_mat - green_L_up);
@@ -122,10 +105,9 @@ for time_index = 1:1:TempSlice
     [plot_mean_ori(time_index),plot_svar_ori(time_index)] = Bin(sample_ori);
 end
 
-errorbar((1:1:TempSlice).*D_Tau/Beta,plot_mean_ori,plot_svar_ori,'r');
-title(['L = ',num2str(NumInEdge),'  ','Uene = ',num2str(Uene), '   Beta = ',num2str(Beta),'   N_wrap=',num2str(N_wrap)]);
-xlabel('Tau ratio');
-ylabel('G_{propa}_Err ratio');
+
+%% Plot the final result
+scatter(mc_NN,mc_potential);
 
 
 

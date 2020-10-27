@@ -2,6 +2,7 @@
 zjy_index = 1;
 T_hop = 1.0;
 NumInEdge = 4;
+MAX_NN  = 4;
 NumOfVertexs = NumInEdge^2;
 K = Get_K(NumInEdge);
 
@@ -13,7 +14,7 @@ TempSlice = Beta/D_Tau;
 lambda = 2.0*atanh(sqrt(tanh(D_Tau*Uene/4.0)));
 NumOfWarm = 100;
 %NumOfWarm = 10;
-NumOfEpoch = 100;
+NumOfEpoch = 1000;
 Sigma = double(rand([TempSlice,NumOfVertexs])>0.5)*2.0-1.0;%RandomInit
 N_wrap = 10;
 N_cut = 5.0;
@@ -25,7 +26,6 @@ mea_result = zeros([1,TempSlice*NumOfEpoch*2]);
 mea_result_auxi = zeros([1,(TempSlice-1)*NumOfEpoch*2]);
 %mc_potential = zeros([1,(TempSlice-1)*NumOfEpoch*2*NumOfVertexs]);
 %mc_NN = zeros([1,(TempSlice-1)*NumOfEpoch*2*NumOfVertexs]);
-MAX_NN  = 4;
 mc_potential = zeros([1,NumOfEpoch*NumOfVertexs]);
 mc_NN = zeros([NumOfEpoch*NumOfVertexs,TempSlice*MAX_NN]);
 count_list = zeros([1,TempSlice])+1;
@@ -101,34 +101,14 @@ for epoch_index = 1:1:NumOfEpoch
     end
     end
 end
-
-
-
 %% Deal with the data
-factor_list = rand([TempSlice,1]);
-N_try = 1e4;
-step = 0.1;
-r2_old = 0;
-for try_index = 1:1:N_try
-    if mod(try_index,N_try/100)==0
-        fprintf("Try_ratio = %f\n",try_index/N_try);
-    end
-    site_change = randi([1,TempSlice]);
-    factor_list_new = factor_list;
-    factor_list_new(site_change) = factor_list_new(site_change) + step * (rand-0.5);
-    new_factor = mc_NN * factor_list_new;
-    corr_mat = corrcoef(mc_potential,new_factor);
-    r2 = abs(corr_mat(1,2)/sqrt(corr_mat(1,1)*corr_mat(2,2)));
-    if r2 > r2_old
-        factor_list = factor_list_new;
-       	disp(r2);
-        r2_old = r2;
-    end
-end
-scatter(new_factor,mc_potential)
+mc_NN = mc_NN';
+
 %% Plot the final result
+scatter(new_factor,mc_potential)
+
+%% Prepare for NN
 
 
-
-
-
+mc_A = mc_potential;
+mc_B = -mc_potential + rand([1,length(mc_A)])*0.1;
